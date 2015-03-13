@@ -2,6 +2,14 @@
 #include <math.h>
 #include "floatfann.h"
 
+/*
+Edited by (James) Sung-Jin Kim, jamessungjin.kim@gmail.com. 2015-3-13
+
+From the demo in http://leenissen.dk/fann/html/files2/gettingstarted-txt.html,
+the following poitns are updated.
+for statnemts are included so as to see all four cases. 
+*/
+
 int main()
 {
 	fann_type *calc_out;
