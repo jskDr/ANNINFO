@@ -1,6 +1,7 @@
-#!/usr/bin/python
+# Modified - from pyfann import libfann (jskDr, 2015-3-17)
+# Original - http://jansipke.nl/using-fann-with-python/
 
-import libfann
+from pyfann import libfann 
 
 connection_rate = 1
 learning_rate = 0.7
