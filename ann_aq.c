@@ -89,7 +89,7 @@ int xor_run()
       input[0] = Inout[ i0];
       input[1] = Inout[ i1];
 
-      calc_out = fann_run( ann, input); // memory for calc_out is allocated in fann_run(), highly probably
+      calc_out = fann_run( ann, input); // memory for calc_out is allocated in fann_run(), highly probably.
       c_int = (int) round(calc_out[0]);
 
       printf("xor test (%f, %f) -> int(%f) -> %d\n", input[0], input[1], calc_out[0], c_int);
@@ -758,12 +758,92 @@ int aq_n_run_file_io( char *fname, char *fdata)
 
 int aq_n_io_main()
 {
-  int num_input = n_IN_N;
+  // int num_input = n_IN_N;
   aq_n_train_io( "aq_2.data");
   aq_n_run_file_io( "aqnoutdata.csv", "aq_2_run.data");
 
   return 0;
 }
+
+//============== ann for more than one input data ==================
+int fprintf_header_n( FILE* fpw, const int in_N)
+{
+  int ii;
+  for( ii = 0; ii < in_N; ii++) {
+    fprintf( fpw, "\"in[%d]\",", ii);
+    printf( "\"in[%d]\",", ii);
+  }
+  fprintf( fpw, "\"out\"\n");
+  printf( "\"out\"\n");
+
+  return 0;
+}
+
+int ann_run_file_io( char *fname, char *fdata)
+{
+  fann_type *calc_out;
+  fann_type input[ n_IN_N];
+  //float inout[ n_INOUT_N][ n_IN_N] = { {1.0, 0.28}, {0.67, 0.46}, {0.65, 0.41}, {0.58, 0.49}, {0.28, 1}};
+  
+  struct st_inout inout;
+  FILE *pt;
+  
+  int i0, i1, c_int;
+  float in_val;
+
+  struct fann *ann = fann_create_from_file("aq_float.net");
+
+  // File is used to save the output;
+  FILE *fpw;
+  // char *header[] = {"in0", "in1", "out"}; < For more than 2 inputs, this will not be used.
+
+  pt = get_inout( &inout, fdata);
+  if( pt != NULL) {
+    fpw = fopen( fname, "w");
+    if(fpw != NULL) {
+      fprintf_header_n( fpw, inout.in_n); // <-- This should be modified since input can be more than 2
+
+      for( i0 = 0; i0 < inout.out_n; i0++) {
+        for( i1 = 0; i1 < inout.in_n; i1++) {
+          input[ i1] = inout.data[ i0][ i1];
+          // printf("input[%d] = %f, ", i1, input[ i1]);
+        }
+    
+        calc_out = fann_run( ann, input);
+        for( i1 = 0; i1 < inout.in_n; i1++) {
+          fprintf( fpw, "%f,", input[ i1]);
+          printf( "%f,", input[ i1]);
+        }
+        fprintf( fpw, "%f\n", calc_out[0]);
+        printf( "%f\n", calc_out[0]);
+      }
+
+      fclose( fpw);      
+    }
+    else {
+      printf("File of (%s) can not be opened.\n", fname);
+    }
+
+    close_inout( &inout);
+  }
+  else {
+    printf("Run data of (%s) is not valid.\n", fdata);
+  }
+
+  fann_destroy(ann);
+
+  return 0;
+}
+
+
+int ann_io_main()
+{
+  aq_n_train_io( "ann_in.data");
+  ann_run_file_io( "ann_out.csv", "ann_run.data");
+
+  return 0;
+}
+
 
 // ============================================================================================
 // Main programe
