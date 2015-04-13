@@ -3,6 +3,8 @@
 #include <string.h>
 #include "fann.h"
 
+#include "ann_aq.h"
+
 /*
 Edited by (James) Sung-Jin Kim, jamessungjin.kim@gmail.com. 2015-3-13 ~ 2015-4-5
 
@@ -232,8 +234,8 @@ int aq_train_err( float desired_error)
 
   const unsigned int num_neurons_hidden = 2;
   // const float desired_error = (const float) 0.0005;
-  const unsigned int max_epochs = 50000;
-  const unsigned int epoch_between_reports = 10000;
+  const unsigned int max_epochs = 500000;
+  const unsigned int epoch_between_reports = 5000;
 
   struct fann *ann = fann_create_standard( num_layers, num_input, num_neurons_hidden, num_output);
 
@@ -607,8 +609,86 @@ int aq_n_train_io( char* indata)
 
   const unsigned int num_layers = 3;
 
-  const unsigned int num_neurons_hidden = 2;
+  const unsigned int num_neurons_hidden = 4; //2 -> 4 -> 6 -> 20 -> 4 --> 20 -> 4
   const float desired_error = (const float) 0.00001;
+  const unsigned int max_epochs = 20000; // 20000 -> 50000 --> 10000 -> 5000 -> 20000 -> 5000 -> 20000
+  const unsigned int epoch_between_reports = 1000; // 1000 -> 100
+
+  unsigned int num_output;
+  unsigned int num_input;
+
+  get_ann_info( indata, &num_input, &num_output);
+
+  printf( "ANN has %d layers, %d neurons_hidden, %f desired error\n", num_layers, num_neurons_hidden, desired_error);
+  printf( "%d inputs, %d outputs\n", num_input, num_output);
+  printf( "max_epochs = %d, epoch_between_reports = %d\n", max_epochs, epoch_between_reports);
+
+  struct fann *ann = fann_create_standard( num_layers, num_input, num_neurons_hidden, num_output);
+
+  // fann_set_learning_rate(ann, learning_rate);
+
+  fann_set_activation_function_hidden(ann, FANN_SIGMOID_SYMMETRIC);
+  fann_set_activation_function_output(ann, FANN_LINEAR);
+
+  fann_train_on_file( ann, indata, max_epochs, epoch_between_reports, desired_error);
+
+  fann_save( ann, "aq_float.net");
+
+  fann_destroy( ann);
+
+  return 0;
+}
+
+int _aq_n_train_io_20150409( char* indata)
+{
+  // only aq.data and aq_float.net are applied. 
+  // output function is changed to linear for equlization instead of decision.
+
+  // const float learning_rate = 0.7f;
+
+  const unsigned int num_layers = 3;
+
+  const unsigned int num_neurons_hidden = 4; //2 -> 4 -> 6 -> 2
+  const float desired_error = (const float) 0.00001;
+  const unsigned int max_epochs = 50000; // 20000 -> 50000
+  const unsigned int epoch_between_reports = 1000; // 1000 -> 100
+
+  unsigned int num_output;
+  unsigned int num_input;
+
+  get_ann_info( indata, &num_input, &num_output);
+
+  printf( "ANN has %d layers, %d neurons_hidden, %f desired error\n", num_layers, num_neurons_hidden, desired_error);
+  printf( "%d inputs, %d outputs\n", num_input, num_output);
+  printf( "max_epochs = %d, epoch_between_reports = %d\n", max_epochs, epoch_between_reports);
+
+  struct fann *ann = fann_create_standard( num_layers, num_input, num_neurons_hidden, num_output);
+
+  // fann_set_learning_rate(ann, learning_rate);
+
+  fann_set_activation_function_hidden(ann, FANN_SIGMOID_SYMMETRIC);
+  fann_set_activation_function_output(ann, FANN_LINEAR);
+
+  fann_train_on_file( ann, indata, max_epochs, epoch_between_reports, desired_error);
+
+  fann_save( ann, "aq_float.net");
+
+  fann_destroy( ann);
+
+  return 0;
+}
+
+int aq_n_train_io_err( char* indata, const float desired_error)
+{
+  // only aq.data and aq_float.net are applied. 
+  // output function is changed to linear for equlization instead of decision.
+
+  // const float learning_rate = 0.7f;
+
+  const unsigned int num_layers = 3;
+
+  const unsigned int num_neurons_hidden = 2;
+  //const float desired_error = (const float) 0.00001;
   const unsigned int max_epochs = 50000;
   const unsigned int epoch_between_reports = 10000;
 
@@ -666,7 +746,7 @@ FILE* get_inout(struct st_inout *pinout, char *fdata) {
         // printf( "pinout->data[%d][%d] = %f\n", out_n, in_n, pinout->data[out_n][in_n])
         // printf( "%f, ", pinout->data[out_n][in_n]);
       }
-      show_vec_float( pinout->data[out_n], pinout->in_n);
+      // show_vec_float( pinout->data[out_n], pinout->in_n);
     }
     
     fclose( fpr);
@@ -733,10 +813,10 @@ int aq_n_run_file_io( char *fname, char *fdata)
         calc_out = fann_run( ann, input);
         for( i1 = 0; i1 < inout.in_n; i1++) {
           fprintf( fpw, "%f,", input[ i1]);
-          printf( "%f,", input[ i1]);
+          // printf( "%f,", input[ i1]);
         }
         fprintf( fpw, "%f\n", calc_out[0]);
-        printf( "%f\n", calc_out[0]);
+        // printf( "%f\n", calc_out[0]);
       }
 
       fclose( fpw);      
@@ -760,10 +840,22 @@ int aq_n_io_main()
 {
   // int num_input = n_IN_N;
   aq_n_train_io( "aq_2.data");
-  aq_n_run_file_io( "aqnoutdata.csv", "aq_2_run.data");
+  // aq_n_run_file_io( "aqnoutdata.csv", "aq_2_run.data");
+  ann_run_file_io( "aqnoutdata.csv", "aq_2_run.data");
 
   return 0;
 }
+
+int aq_n_io_main_err( const float desired_error)
+{
+  // int num_input = n_IN_N;
+  aq_n_train_io_err( "aq_2.data", desired_error);
+  // aq_n_run_file_io( "aqnoutdata.csv", "aq_2_run.data");
+  ann_run_file_io( "aqnoutdata.csv", "aq_2_run.data");
+
+  return 0;
+}
+
 
 //============== ann for more than one input data ==================
 int fprintf_header_n( FILE* fpw, const int in_N)
@@ -771,10 +863,10 @@ int fprintf_header_n( FILE* fpw, const int in_N)
   int ii;
   for( ii = 0; ii < in_N; ii++) {
     fprintf( fpw, "\"in[%d]\",", ii);
-    printf( "\"in[%d]\",", ii);
+    //printf( "\"in[%d]\",", ii);
   }
   fprintf( fpw, "\"out\"\n");
-  printf( "\"out\"\n");
+  //printf( "\"out\"\n");
 
   return 0;
 }
@@ -782,8 +874,7 @@ int fprintf_header_n( FILE* fpw, const int in_N)
 int ann_run_file_io( char *fname, char *fdata)
 {
   fann_type *calc_out;
-  fann_type input[ n_IN_N];
-  //float inout[ n_INOUT_N][ n_IN_N] = { {1.0, 0.28}, {0.67, 0.46}, {0.65, 0.41}, {0.58, 0.49}, {0.28, 1}};
+  fann_type *input;
   
   struct st_inout inout;
   FILE *pt;
@@ -798,7 +889,8 @@ int ann_run_file_io( char *fname, char *fdata)
   // char *header[] = {"in0", "in1", "out"}; < For more than 2 inputs, this will not be used.
 
   pt = get_inout( &inout, fdata);
-  if( pt != NULL) {
+  input = (fann_type *) malloc( sizeof( fann_type) * inout.in_n);
+  if( pt != NULL && input != NULL) {
     fpw = fopen( fname, "w");
     if(fpw != NULL) {
       fprintf_header_n( fpw, inout.in_n); // <-- This should be modified since input can be more than 2
@@ -812,10 +904,10 @@ int ann_run_file_io( char *fname, char *fdata)
         calc_out = fann_run( ann, input);
         for( i1 = 0; i1 < inout.in_n; i1++) {
           fprintf( fpw, "%f,", input[ i1]);
-          printf( "%f,", input[ i1]);
+          //printf( "%f,", input[ i1]);
         }
         fprintf( fpw, "%f\n", calc_out[0]);
-        printf( "%f\n", calc_out[0]);
+        //printf( "%f\n", calc_out[0]);
       }
 
       fclose( fpw);      
@@ -824,6 +916,7 @@ int ann_run_file_io( char *fname, char *fdata)
       printf("File of (%s) can not be opened.\n", fname);
     }
 
+    free( input);
     close_inout( &inout);
   }
   else {
@@ -835,10 +928,39 @@ int ann_run_file_io( char *fname, char *fdata)
   return 0;
 }
 
+int _ann_io_main_20150409()
+// This is baseline code for CWS solubility data evaluation.
+{
+  char *FNAME_IN = "ann_in.data";
+  char *FNAME_RUN = "ann_run.data", *FNAME_OUT = "ann_out.csv";
+  
+  printf("ANN training with %s:\n", FNAME_IN);
+  aq_n_train_io( FNAME_IN);
+
+  printf("ANN validation with input %s, ouput %s:\n", FNAME_RUN, FNAME_OUT);
+  ann_run_file_io( FNAME_OUT, FNAME_RUN);
+
+  return 0;
+}
+
 
 int ann_io_main()
 {
-  aq_n_train_io( "ann_in.data");
+  char *FNAME_IN = "ann_in.data";
+  char *FNAME_RUN = "ann_run.data", *FNAME_OUT = "ann_out.csv";
+  
+  printf("ANN training with %s:\n", FNAME_IN);
+  aq_n_train_io( FNAME_IN);
+
+  printf("ANN validation with input %s, ouput %s:\n", FNAME_RUN, FNAME_OUT);
+  ann_run_file_io( FNAME_OUT, FNAME_RUN);
+
+  return 0;
+}
+
+int ann_io_main_err( const float desired_error)
+{
+  aq_n_train_io_err( "ann_in.data", desired_error);
   ann_run_file_io( "ann_out.csv", "ann_run.data");
 
   return 0;
@@ -854,8 +976,11 @@ int show_help()
     printf("Usage-2: ann_aq mode param\n");
     printf("Help: ann_aq\n");
     printf("Where\n");
-    printf("  mode = xor, aq, aq_n\n");
+    printf("  mode = xor, aq, aq_n, aq_n_io, ann_io\n");
+    printf("  specially, mode = _ann_io_20150409\n");
     printf("  param = desired_error\n");
+    printf("Files for aq_n_io: aq_2.data, aq_2_run.data -> aqnoutdata.csv\n");
+    printf("Files for ann: ann_in.data, ann_run.data -> ann_out.csv\n");
 
     return 0;
 }
@@ -889,6 +1014,14 @@ int run_main(int argc, char* argv[])
       printf("aq_n_io_main\n");
       aq_n_io_main();
     }
+    else if( !strcmp( argv[1], "ann_io")) { 
+      printf("ann_io_main\n");
+      ann_io_main();
+    }
+    else if( !strcmp( argv[1], "_ann_io_20150409")) { 
+      printf("_ann_io_main_20150409\n");
+      _ann_io_main_20150409();
+    }
     else {
       show_help();
     }
@@ -899,6 +1032,8 @@ int run_main(int argc, char* argv[])
     if( !strcmp( argv[1], "xor")) { xor_main_err( desired_error);}
     else if( !strcmp( argv[1], "aq")) { aq_main_err( desired_error);}
     else if( !strcmp( argv[1], "aq_n")) { aq_n_main_err( desired_error);}
+    else if( !strcmp( argv[1], "aq_n_io")) { aq_n_io_main_err( desired_error);}
+    else if( !strcmp( argv[1], "ann_io")) { ann_io_main_err( desired_error);}
     else {
       show_help();
     }
