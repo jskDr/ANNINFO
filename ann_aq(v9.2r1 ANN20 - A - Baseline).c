@@ -609,9 +609,9 @@ int aq_n_train_io( char* indata)
 
   const unsigned int num_layers = 3;
 
-  const unsigned int num_neurons_hidden = 4; //2 -> 4 -> 6 -> 20 -> 4 --> 20 -> 4 -> 20 -> 4
-  const float desired_error = (const float) 0.00001; // 0.00001 -> 0.001
-  const unsigned int max_epochs = 5000; // 20000 -> 50000 --> 10000 -> 5000 -> 20000 -> 5000 -> 20000 -> 5000
+  const unsigned int num_neurons_hidden = 20; //2 -> 4 -> 6 -> 20 -> 4 --> 20 -> 4 -> 20
+  const float desired_error = (const float) 0.00001;
+  const unsigned int max_epochs = 20000; // 20000 -> 50000 --> 10000 -> 5000 -> 20000 -> 5000 -> 20000
   const unsigned int epoch_between_reports = 1000; // 1000 -> 100
 
   unsigned int num_output;
@@ -717,7 +717,6 @@ struct st_inout {
   float **data;
   unsigned int out_n;
   unsigned int in_n;
-  // unsigned int hidden_n;
 };
 
 int show_vec_float( float* f, const unsigned int L) {
@@ -967,137 +966,6 @@ int ann_io_main_err( const float desired_error)
   return 0;
 }
 
-struct st_param {
-  char *FNAME_IN;
-  char *FNAME_RUN;
-  char *FNAME_OUT;
-
-  float desired_error;
-  int num_neurons_hidden;
-  int max_epochs, epoch_between_reports;
-};
-
-int set_param( struct st_param *pann_p, const char* param_name, const char* param_val)
-{
-  //It return 1 if parametere is set. Otherwise, it returns 0.
-  //printf("Set parameters:\n");
-  if( !strcmp( param_name, "num_neurons_hidden")) {
-    pann_p->num_neurons_hidden = atoi( param_val);
-    printf("SET:num_neurons_hidden = %d\n", pann_p->num_neurons_hidden);
-  }
-  else if( !strcmp( param_name, "desired_error")) {
-    pann_p->desired_error = atof( param_val);
-    printf("SET:desired_error = %f\n", pann_p->desired_error);
-  }
-  else if( !strcmp( param_name, "max_epochs")) {
-    pann_p->max_epochs = atoi( param_val);
-    printf("SET:max_epochs = %d\n", pann_p->max_epochs);
-  }
-  else if( !strcmp( param_name, "epoch_between_reports")) {
-    pann_p->epoch_between_reports = atoi( param_val);
-    printf("SET:epoch_between_reports = %d\n", pann_p->epoch_between_reports);
-  }
-  else
-    return 0;
-
-  return 1;
-}
-
-int get_param( struct st_param* pann_p, const char* FNAME_PARAM)
-{
-  FILE *fp;
-  const int par_sz = 256;
-  char param_line[256];
-  char param_name[256];
-  char param_val[256];
-  char *sta1, *sta2;
-
-  // For newly readble parameters, the coresponding default values should be assigned earlier. 
-  pann_p->FNAME_IN = "ann_in.data";
-  pann_p->FNAME_RUN = "ann_run.data";
-  pann_p->FNAME_OUT = "ann_out.csv";
-  pann_p->num_neurons_hidden = 4;
-  pann_p->desired_error = 0.00001;
-  pann_p->max_epochs = 5000;
-  pann_p->epoch_between_reports = 1000;
-
-  fp = fopen( FNAME_PARAM, "r");
-  if( fp) {
-    while( fgets( param_line, par_sz, fp)) {
-      printf("%s\n", param_line);
-      if( sscanf( param_line, "%s %s", param_name, param_val) == 2) 
-        set_param( pann_p, param_name, param_val);
-    }
-  }
-
-  return 0;
-}
-
-
-int ann_train( const struct st_param *pann_p)
-{
-  // only aq.data and aq_float.net are applied. 
-  // output function is changed to linear for equlization instead of decision.
-
-  // const float learning_rate = 0.7f;
-
-  const unsigned int num_layers = 3;
-
-  const unsigned int num_neurons_hidden = pann_p->num_neurons_hidden; 
-  const float desired_error = pann_p->desired_error;
-  const unsigned int max_epochs = pann_p->max_epochs; 
-  const unsigned int epoch_between_reports = pann_p->epoch_between_reports; 
-
-  unsigned int num_output;
-  unsigned int num_input;
-
-  char* indata = pann_p->FNAME_IN;
-
-  get_ann_info( indata, &num_input, &num_output);
-
-  printf( "ANN has %d layers, %d neurons_hidden, %f desired error\n", num_layers, num_neurons_hidden, desired_error);
-  printf( "%d inputs, %d outputs\n", num_input, num_output);
-  printf( "max_epochs = %d, epoch_between_reports = %d\n", max_epochs, epoch_between_reports);
-
-  struct fann *ann = fann_create_standard( num_layers, num_input, num_neurons_hidden, num_output);
-
-  // fann_set_learning_rate(ann, learning_rate);
-
-  fann_set_activation_function_hidden(ann, FANN_SIGMOID_SYMMETRIC);
-  fann_set_activation_function_output(ann, FANN_LINEAR);
-
-  fann_train_on_file( ann, indata, max_epochs, epoch_between_reports, desired_error);
-
-  fann_save( ann, "aq_float.net");
-
-  fann_destroy( ann);
-
-  return 0;
-}
-
-int ann_main( const char *FNAME_PARAM)
-// parameters will be provided by param.data
-// desired_error 0.0001
-// num_neurons_hidden 4
-{
-  
-  struct st_param ann_p;
-
-  // This are the default values
-
-  get_param( &ann_p, FNAME_PARAM);
-  
-  printf("Step 1/2. ANN training with %s:\n", ann_p.FNAME_IN);
-  //aq_n_train_io( ann_p.FNAME_IN);
-  ann_train( &ann_p);
-
-  printf("Step 2/2. ANN validation with input %s, ouput %s:\n", ann_p.FNAME_RUN, ann_p.FNAME_OUT);
-  ann_run_file_io( ann_p.FNAME_OUT, ann_p.FNAME_RUN);
-
-  return 0;
-}
-
-
 
 // ============================================================================================
 // Main programe
@@ -1106,7 +974,6 @@ int show_help()
 {
     printf("Usage-1: ann_aq mode\n");
     printf("Usage-2: ann_aq mode param\n");
-    printf("Usage-3: ann_aq param_fname.txt\n");
     printf("Help: ann_aq\n");
     printf("Where\n");
     printf("  mode = xor, aq, aq_n, aq_n_io, ann_io\n");
@@ -1128,19 +995,10 @@ int test_main()
 int run_main(int argc, char* argv[])
 {
   float desired_error;
-  int ln_a1, ln_ext; // it uses for storing the length of argv[1].
-  const char *ext_name = "txt";
 
   if( argc == 2) {
     printf("Run: ann_aq %s\n", argv[1]);
-    ln_a1 = strlen( argv[1]);
-    ln_ext = strlen( ext_name);
-    if( ln_a1 > ln_ext && !strcmp( &argv[1][ln_a1 - ln_ext], ext_name)) {
-      // Parameters can be provided by parameter file with extension of .txt
-      printf("Read parameters from %s\n", argv[1]);
-      ann_main( argv[1]);
-    }
-    else if( !strcmp( argv[1], "xor")) { 
+    if( !strcmp( argv[1], "xor")) { 
       printf("xor\n");
       xor_main();
     }
